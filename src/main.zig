@@ -4,6 +4,7 @@ const rl = @cImport({
 
 pub fn main() !void {
     rl.InitWindow(800, 800, "Nonogram-Zig");
+    defer rl.CloseWindow();
 
     while (!rl.WindowShouldClose()) {
         rl.BeginDrawing();
@@ -11,6 +12,4 @@ pub fn main() !void {
         rl.DrawText("Nonogram", 300, 380, 40, rl.LIGHTGRAY);
         rl.EndDrawing();
     }
-
-    defer rl.CloseWindow();
 }
