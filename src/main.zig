@@ -3,12 +3,12 @@ const rl = @cImport({
 });
 
 pub fn main() !void {
-    rl.InitWindow(800, 600, "Nonogram-Zig");
+    rl.InitWindow(800, 800, "Nonogram-Zig");
 
     while (!rl.WindowShouldClose()) {
         rl.BeginDrawing();
-        rl.ClearBackground(rl.RAYWHITE);
-        rl.DrawText("Nonogram", 190, 200, 20, rl.LIGHTGRAY);
+        rl.ClearBackground(rl.DARKGRAY);
+        rl.DrawText("Nonogram", 300, 380, 40, rl.LIGHTGRAY);
         rl.EndDrawing();
     }
 
