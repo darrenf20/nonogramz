@@ -1,0 +1,10 @@
+.{
+    .name = "nonogram-zig",
+    .version = "0.1.0",
+    .dependencies = .{
+        .raylib = .{
+            .url = "https://github.com/raysan5/raylib/archive/016b7d0a3a6d67e5d78a19d8c0adaa555712e67d.tar.gz",
+            .hash = "122087ec04612514513e7758ebc3a1396a4c3c4e9a6ad1175e428fcfdc117bc49efd",
+        },
+    },
+}
