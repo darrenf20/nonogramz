@@ -30,7 +30,12 @@ pub fn main() !void {
             defer file.close();
 
             if (bytes.len != 0) allocator.free(bytes);
-            bytes = try allocator.alloc(u8, try file.getEndPos());
+            bytes = try file.readToEndAlloc(allocator, try file.getEndPos());
+
+            var iterator = std.mem.splitScalar(u8, bytes, '\n');
+            while (iterator.next()) |line| {
+                std.debug.print("{s}\n", .{line});
+            }
         }
 
         // Draw
