@@ -5,14 +5,30 @@ const rl = @cImport({
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
     defer {
         const status = gpa.deinit();
         if (status == .leak) std.debug.print("* Memory leak detected *\n", .{});
     }
 
-    const allocator = gpa.allocator();
     var bytes: []u8 = &.{};
-    defer allocator.free(bytes);
+    var row_info: [][]usize = undefined;
+    var col_info: [][]usize = undefined;
+    var grid: [][]u1 = undefined;
+    defer {
+        if (bytes.len != 0) {
+            allocator.free(bytes);
+
+            for (row_info) |line| allocator.free(line);
+            allocator.free(row_info);
+
+            for (col_info) |line| allocator.free(line);
+            allocator.free(col_info);
+
+            for (grid) |line| allocator.free(line);
+            allocator.free(grid);
+        }
+    }
 
     rl.InitWindow(800, 800, "Nonogram");
     defer rl.CloseWindow();
@@ -27,14 +43,45 @@ pub fn main() !void {
                 @as([*:0]u8, @ptrCast(&(dropped.paths.*[0]))),
                 .{},
             );
-            defer file.close();
-
             if (bytes.len != 0) allocator.free(bytes);
             bytes = try file.readToEndAlloc(allocator, try file.getEndPos());
+            file.close();
 
+            // Populate puzzle info
             var iterator = std.mem.splitScalar(u8, bytes, '\n');
-            while (iterator.next()) |line| {
-                std.debug.print("{s}\n", .{line});
+            var num_it = std.mem.splitScalar(u8, iterator.next().?, ',');
+            var col_len = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
+            var row_len = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
+
+            row_info = try allocator.alloc([]usize, row_len);
+            col_info = try allocator.alloc([]usize, col_len);
+
+            grid = try allocator.alloc([]u1, row_len);
+            for (grid) |*row| {
+                row.* = try allocator.alloc(u1, col_len);
+                for (row.*) |*square| square.* = 0;
+            }
+
+            _ = iterator.next().?; // skip blank line
+            for (col_info) |*line| {
+                var slice: []const u8 = iterator.next().?;
+                var len = std.mem.count(u8, slice, ",") + 1;
+                line.* = try allocator.alloc(usize, len);
+                num_it = std.mem.splitScalar(u8, slice, ',');
+                for (line.*) |*sq| {
+                    sq.* = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
+                }
+            }
+
+            _ = iterator.next().?; // skip blank line
+            for (row_info) |*line| {
+                var slice: []const u8 = iterator.next().?;
+                var len = std.mem.count(u8, slice, ",") + 1;
+                line.* = try allocator.alloc(usize, len);
+                num_it = std.mem.splitScalar(u8, slice, ',');
+                for (line.*) |*sq| {
+                    sq.* = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
+                }
             }
         }
 
@@ -49,5 +96,19 @@ pub fn main() !void {
         }
 
         rl.EndDrawing();
+    }
+
+    // Debugging purposes -- remove
+    if (bytes.len != 0) {
+        std.debug.print("Column numbers:\n", .{});
+        for (col_info) |line| {
+            for (line) |sq| std.debug.print("{} ", .{sq});
+            std.debug.print("\n", .{});
+        }
+        std.debug.print("\nRow numbers:\n", .{});
+        for (row_info) |line| {
+            for (line) |sq| std.debug.print("{} ", .{sq});
+            std.debug.print("\n", .{});
+        }
     }
 }
