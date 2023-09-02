@@ -14,23 +14,30 @@ pub fn main() !void {
     var data = Puzzle_Data{ .allocator = allocator };
     defer data.deinit();
 
-    rl.InitWindow(800, 800, "Nonogram");
+    const win_w = 800;
+    const win_h = 800;
+    rl.InitWindow(win_w, win_h, "Nonogram");
     defer rl.CloseWindow();
 
     while (!rl.WindowShouldClose()) {
-        if (rl.IsFileDropped()) {
-            try data.init();
-            data.print();
-        }
+        if (rl.IsFileDropped()) try data.init();
 
         // Draw
         rl.BeginDrawing();
         rl.ClearBackground(rl.DARKGRAY);
 
         if (data.bytes.len == 0) {
-            rl.DrawText("Drop puzzle file here", 200, 380, 20, rl.LIGHTGRAY);
+            const text = "Drop puzzle file here";
+            const size = 40;
+            rl.DrawText(
+                text,
+                win_w / 2 - @divTrunc(rl.MeasureText(text, size), 2),
+                win_h / 2 - (size / 2),
+                size,
+                rl.LIGHTGRAY,
+            );
         } else {
-            rl.DrawText("File detected", 10, 380, 20, rl.LIGHTGRAY);
+            //const unit = @min(window_w, window_h)
         }
 
         rl.EndDrawing();
@@ -45,7 +52,7 @@ const Puzzle_Data = struct {
     grid: [][]u1 = undefined,
 
     fn init(self: *Puzzle_Data) !void {
-        if (self.bytes.len != 0) self.deinit();
+        self.deinit();
 
         var dropped: rl.FilePathList = rl.LoadDroppedFiles();
         const file = try std.fs.openFileAbsoluteZ(
@@ -99,6 +106,8 @@ const Puzzle_Data = struct {
     }
 
     fn deinit(self: *Puzzle_Data) void {
+        if (self.bytes.len == 0) return;
+
         self.allocator.free(self.bytes);
 
         for (self.row_info) |line| self.allocator.free(line);
