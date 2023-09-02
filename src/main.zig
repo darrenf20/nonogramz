@@ -37,7 +37,7 @@ pub fn main() !void {
                 rl.LIGHTGRAY,
             );
         } else {
-            //const unit = @min(window_w, window_h)
+            data.draw(win_w, win_h);
         }
 
         rl.EndDrawing();
@@ -120,19 +120,20 @@ const Puzzle_Data = struct {
         self.allocator.free(self.grid);
     }
 
-    // Debugging purposes -- remove
-    fn print(self: *Puzzle_Data) void {
-        if (self.bytes.len != 0) {
-            std.debug.print("Column numbers:\n", .{});
-            for (self.col_info) |line| {
-                for (line) |sq| std.debug.print("{} ", .{sq});
-                std.debug.print("\n", .{});
+    fn draw(self: Puzzle_Data, window_w: usize, window_h: usize) void {
+        const size = @as(c_int, @intCast(@min(window_w, window_h) * 5 / 100));
+        const gap: c_int = 5;
+        const x0 = @as(c_int, @intCast(window_w / 10));
+        var y = @as(c_int, @intCast(window_h / 10));
+
+        for (self.grid, 1..) |row, i| {
+            var x = x0;
+            for (row, 1..) |sq, j| {
+                const colour = if (sq == 0) rl.WHITE else rl.BLACK;
+                rl.DrawRectangle(x, y, size, size, colour);
+                x += size + if (j % 5 == 0) 2 * gap else gap;
             }
-            std.debug.print("\nRow numbers:\n", .{});
-            for (self.row_info) |line| {
-                for (line) |sq| std.debug.print("{} ", .{sq});
-                std.debug.print("\n", .{});
-            }
+            y += size + if (i % 5 == 0) 2 * gap else gap;
         }
     }
 };
