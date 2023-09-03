@@ -11,11 +11,14 @@ pub fn main() !void {
         if (status == .leak) std.debug.print("* Memory leak detected *\n", .{});
     }
 
-    var data = Puzzle_Data{ .allocator = allocator };
-    defer data.deinit();
-
     const win_w = 800;
     const win_h = 800;
+
+    const size = @as(c_int, @intCast(@min(win_w, win_h) * 4 / 100));
+    const gap: c_int = @divFloor(size, 15);
+    var data = Puzzle_Data{ .allocator = allocator, .size = size, .gap = gap };
+    defer data.deinit();
+
     rl.InitWindow(win_w, win_h, "Nonogram");
     defer rl.CloseWindow();
 
@@ -29,12 +32,12 @@ pub fn main() !void {
 
         if (data.bytes.len == 0) {
             const text = "Drop puzzle file here";
-            const size = 40;
+            const font_size = 40;
             rl.DrawText(
                 text,
-                win_w / 2 - @divTrunc(rl.MeasureText(text, size), 2),
-                win_h / 2 - (size / 2),
-                size,
+                win_w / 2 - @divTrunc(rl.MeasureText(text, font_size), 2),
+                win_h / 2 - (font_size / 2),
+                font_size,
                 rl.LIGHTGRAY,
             );
         } else {
@@ -47,10 +50,16 @@ pub fn main() !void {
 
 const Puzzle_Data = struct {
     allocator: std.mem.Allocator,
+
     bytes: []u8 = &.{},
     row_info: [][]usize = undefined,
     col_info: [][]usize = undefined,
     grid: [][]u1 = undefined,
+
+    size: c_int,
+    gap: c_int,
+    w_offset: c_int = 0,
+    h_offset: c_int = 0,
 
     fn init(self: *Puzzle_Data) !void {
         self.deinit();
@@ -85,24 +94,36 @@ const Puzzle_Data = struct {
 
         _ = iterator.next().?; // skip blank line
         for (self.col_info) |*line| {
-            var slice: []const u8 = iterator.next().?;
-            var len = std.mem.count(u8, slice, " ") + 1;
+            var str: []const u8 = iterator.next().?;
+            num_it = std.mem.splitScalar(u8, str, ' ');
+
+            var len = std.mem.count(u8, str, " ") + 1;
             line.* = try self.allocator.alloc(usize, len);
-            num_it = std.mem.splitScalar(u8, slice, ' ');
+
             for (line.*) |*sq| {
                 sq.* = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
             }
+
+            var offset: c_int = @as(c_int, @intCast(len)) * (self.size + self.gap);
+            if (offset > self.h_offset) self.h_offset = offset;
         }
 
         _ = iterator.next().?; // skip blank line
         for (self.row_info) |*line| {
-            var slice: []const u8 = iterator.next().?;
-            var len = std.mem.count(u8, slice, " ") + 1;
+            var str: []const u8 = iterator.next().?;
+            num_it = std.mem.splitScalar(u8, str, ' ');
+
+            var len = std.mem.count(u8, str, " ") + 1;
             line.* = try self.allocator.alloc(usize, len);
-            num_it = std.mem.splitScalar(u8, slice, ' ');
+
             for (line.*) |*sq| {
                 sq.* = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
             }
+
+            const cstr = try self.allocator.dupeZ(u8, str);
+            var offset: c_int = rl.MeasureText(cstr, self.size) + self.gap;
+            self.allocator.free(cstr);
+            if (offset > self.w_offset) self.w_offset = offset;
         }
     }
 
@@ -122,8 +143,6 @@ const Puzzle_Data = struct {
     }
 
     fn draw(self: Puzzle_Data, window_w: usize, window_h: usize) void {
-        const size = @as(c_int, @intCast(@min(window_w, window_h) * 4 / 100));
-        const gap: c_int = @divFloor(size, 15);
         const x0 = @as(c_int, @intCast(window_w / 10));
         var y = @as(c_int, @intCast(window_h / 10));
 
@@ -131,10 +150,10 @@ const Puzzle_Data = struct {
             var x = x0;
             for (row, 1..) |sq, j| {
                 const colour = if (sq == 0) rl.WHITE else rl.BLACK;
-                rl.DrawRectangle(x, y, size, size, colour);
-                x += size + if (j % 5 == 0) 2 * gap else gap;
+                rl.DrawRectangle(x, y, self.size, self.size, colour);
+                x += self.size + if (j % 5 == 0) 2 * self.gap else self.gap;
             }
-            y += size + if (i % 5 == 0) 2 * gap else gap;
+            y += self.size + if (i % 5 == 0) 2 * self.gap else self.gap;
         }
     }
 };
