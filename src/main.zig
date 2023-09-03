@@ -19,6 +19,7 @@ pub fn main() !void {
     rl.InitWindow(win_w, win_h, "Nonogram");
     defer rl.CloseWindow();
 
+    rl.SetTargetFPS(30);
     while (!rl.WindowShouldClose()) {
         if (rl.IsFileDropped()) try data.init();
 
@@ -69,7 +70,7 @@ const Puzzle_Data = struct {
         // Populate puzzle info
         // TODO: error checking, validation
         var iterator = std.mem.splitScalar(u8, self.bytes, '\n');
-        var num_it = std.mem.splitScalar(u8, iterator.next().?, ',');
+        var num_it = std.mem.splitScalar(u8, iterator.next().?, ' ');
         var col_len = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
         var row_len = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
 
@@ -85,9 +86,9 @@ const Puzzle_Data = struct {
         _ = iterator.next().?; // skip blank line
         for (self.col_info) |*line| {
             var slice: []const u8 = iterator.next().?;
-            var len = std.mem.count(u8, slice, ",") + 1;
+            var len = std.mem.count(u8, slice, " ") + 1;
             line.* = try self.allocator.alloc(usize, len);
-            num_it = std.mem.splitScalar(u8, slice, ',');
+            num_it = std.mem.splitScalar(u8, slice, ' ');
             for (line.*) |*sq| {
                 sq.* = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
             }
@@ -96,9 +97,9 @@ const Puzzle_Data = struct {
         _ = iterator.next().?; // skip blank line
         for (self.row_info) |*line| {
             var slice: []const u8 = iterator.next().?;
-            var len = std.mem.count(u8, slice, ",") + 1;
+            var len = std.mem.count(u8, slice, " ") + 1;
             line.* = try self.allocator.alloc(usize, len);
-            num_it = std.mem.splitScalar(u8, slice, ',');
+            num_it = std.mem.splitScalar(u8, slice, ' ');
             for (line.*) |*sq| {
                 sq.* = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
             }
@@ -121,8 +122,8 @@ const Puzzle_Data = struct {
     }
 
     fn draw(self: Puzzle_Data, window_w: usize, window_h: usize) void {
-        const size = @as(c_int, @intCast(@min(window_w, window_h) * 5 / 100));
-        const gap: c_int = 5;
+        const size = @as(c_int, @intCast(@min(window_w, window_h) * 4 / 100));
+        const gap: c_int = @divFloor(size, 15);
         const x0 = @as(c_int, @intCast(window_w / 10));
         var y = @as(c_int, @intCast(window_h / 10));
 
