@@ -104,7 +104,7 @@ const Puzzle_Data = struct {
                 sq.* = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
             }
 
-            var offset: c_int = @as(c_int, @intCast(len)) * (self.size + self.gap);
+            var offset = @as(c_int, @intCast(len)) * (self.size + self.gap);
             if (offset > self.h_offset) self.h_offset = offset;
         }
 
@@ -121,7 +121,7 @@ const Puzzle_Data = struct {
             }
 
             const cstr = try self.allocator.dupeZ(u8, str);
-            var offset: c_int = rl.MeasureText(cstr, self.size) + self.gap;
+            var offset = rl.MeasureText(cstr, self.size) + self.gap;
             self.allocator.free(cstr);
             if (offset > self.w_offset) self.w_offset = offset;
         }
@@ -140,11 +140,17 @@ const Puzzle_Data = struct {
 
         for (self.grid) |line| self.allocator.free(line);
         self.allocator.free(self.grid);
+
+        self.w_offset = 0;
+        self.h_offset = 0;
     }
 
     fn draw(self: Puzzle_Data, window_w: usize, window_h: usize) void {
-        const x0 = @as(c_int, @intCast(window_w / 10));
-        var y = @as(c_int, @intCast(window_h / 10));
+        _ = window_w;
+        _ = window_h;
+
+        const x0 = self.w_offset;
+        var y = self.h_offset;
 
         for (self.grid, 1..) |row, i| {
             var x = x0;
