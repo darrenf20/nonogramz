@@ -20,11 +20,18 @@ pub fn main() !void {
     var data = Data{ .ally = ally, .size = size, .gap = gap };
     defer data.deinit();
 
+    // Window configuration
+    rl.SetConfigFlags(rl.FLAG_WINDOW_RESIZABLE);
     rl.InitWindow(win_w, win_h, "Nonogram");
     defer rl.CloseWindow();
-
+    rl.SetWindowMinSize(320, 240);
     rl.SetTargetFPS(30);
+
+    // Main loop
     while (!rl.WindowShouldClose()) {
+        if (rl.IsKeyPressed(rl.KEY_F)) {
+            if (rl.IsWindowMaximized()) rl.RestoreWindow() else rl.MaximizeWindow();
+        }
         if (rl.IsFileDropped()) try data.init();
 
         // Draw
@@ -33,14 +40,11 @@ pub fn main() !void {
 
         if (data.bytes.len == 0) {
             const text = "Drop puzzle file here";
-            const font_size = 40;
-            rl.DrawText(
-                text,
-                win_w / 2 - @divTrunc(rl.MeasureText(text, font_size), 2),
-                win_h / 2 - (font_size / 2),
-                font_size,
-                rl.LIGHTGRAY,
-            );
+            const sz = @divFloor(5 * rl.GetScreenWidth(), 100);
+            const len = rl.MeasureText(text, sz);
+            const x = @divFloor(rl.GetScreenWidth(), 2) - @divFloor(len, 2);
+            const y = @divFloor(rl.GetScreenHeight(), 2) - @divFloor(sz, 2);
+            rl.DrawText(text, x, y, sz, rl.GRAY);
         } else {
             //data.draw(win_w, win_h);
             data.draw_grid_lines();
