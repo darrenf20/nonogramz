@@ -5,27 +5,21 @@ const rl = @cImport({
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const ally = gpa.allocator();
+    const allocator = gpa.allocator();
     defer {
-        const status = gpa.deinit();
-        if (status == .leak) std.debug.print("* Memory leak detected *\n", .{});
+        const err = gpa.deinit();
+        if (err == .leak) std.debug.print("<< MEMORY LEAK DETECTED >>\n", .{});
     }
 
-    const win_w = 800;
-    const win_h = 800;
-
-    //const size = @as(c_int, @intCast(@min(win_w, win_h) * 4 / 100));
-    const size: c_int = 50;
-    const gap: c_int = @divFloor(size, 15);
-    var data = Data{ .ally = ally, .size = size, .gap = gap };
+    var data = Data{ .ally = allocator };
     defer data.deinit();
 
     // Window configuration
     rl.SetConfigFlags(rl.FLAG_WINDOW_RESIZABLE);
-    rl.InitWindow(win_w, win_h, "Nonogram");
+    rl.InitWindow(800, 800, "NonogramZ");
     defer rl.CloseWindow();
     rl.SetWindowMinSize(320, 240);
-    rl.SetTargetFPS(30);
+    rl.SetTargetFPS(60);
 
     // Main loop
     while (!rl.WindowShouldClose()) {
@@ -38,16 +32,29 @@ pub fn main() !void {
         rl.BeginDrawing();
         rl.ClearBackground(rl.WHITE);
 
+        const win_w = rl.GetScreenWidth();
+        const win_h = rl.GetScreenHeight();
+
         if (data.bytes.len == 0) {
             const text = "Drop puzzle file here";
-            const sz = @divFloor(5 * rl.GetScreenWidth(), 100);
-            const len = rl.MeasureText(text, sz);
-            const x = @divFloor(rl.GetScreenWidth(), 2) - @divFloor(len, 2);
-            const y = @divFloor(rl.GetScreenHeight(), 2) - @divFloor(sz, 2);
-            rl.DrawText(text, x, y, sz, rl.GRAY);
+            const size = @divFloor(4 * win_w, 100);
+            const len = rl.MeasureText(text, size);
+            const x = @divFloor(win_w, 2) - @divFloor(len, 2);
+            const y = @divFloor(win_h, 2) - @divFloor(size, 2);
+            rl.DrawText(text, x, y, size, rl.GRAY);
         } else {
-            //data.draw(win_w, win_h);
-            data.draw_grid_lines();
+            const x = data.x_offset + @as(c_int, @intCast(data.col_info.len));
+            const y = data.y_offset + @as(c_int, @intCast(data.row_info.len));
+            //const window_scale =
+            //    @as(f64, @floatFromInt(win_w)) / @as(f64, @floatFromInt(win_h));
+            //const grid_scale =
+            //    @as(f64, @floatFromInt(x)) / @as(f64, @floatFromInt(y));
+            var size_x: c_int = @divFloor(@divFloor(9 * win_w, 10), x);
+            var size_y: c_int = @divFloor(@divFloor(9 * win_h, 10), y);
+            var size = @min(size_x, size_y);
+
+            const gap = @divFloor(size, 15);
+            data.draw_grid_lines(size, gap);
         }
 
         rl.EndDrawing();
@@ -64,8 +71,6 @@ const Data = struct {
     col_info: [][]usize = undefined,
     grid: [][]u1 = undefined,
 
-    size: c_int,
-    gap: c_int,
     x_offset: c_int = 0,
     y_offset: c_int = 0,
 
@@ -150,28 +155,28 @@ const Data = struct {
     }
 
     //fn draw(self: *Data) !void {
-    //    var x: c_int = self.x_offset + 4 * self.gap;
-    //    var y: c_int = self.gap;
+    //    var x: c_int = self.x_offset + 4 * gap;
+    //    var y: c_int = gap;
 
     //    // Draw column number text
     //    for (self.col_info) |line| {
-    //        y = self.gap;
+    //        y = gap;
     //        for (line) |num| {
     //            const txt = try self.bufZ(num);
-    //            rl.DrawText(txt, x, y, self.size, rl.BLACK);
-    //            y += self.size + self.gap;
+    //            rl.DrawText(txt, x, y, size, rl.BLACK);
+    //            y += size + gap;
     //        }
-    //        x += self.size + self.gap;
+    //        x += size + gap;
     //    }
 
     //    // Draw row number text
-    //    x = self.gap;
+    //    x = gap;
     //    for (self.row_info) |line| {
-    //        y += self.size + self.gap;
+    //        y += size + gap;
     //        for (line) |num| {
     //            const txt = try self.bufZ(num);
-    //            rl.DrawText(txt, x, y, self.size, rl.BLACK);
-    //            x += self.size + self.gap;
+    //            rl.DrawText(txt, x, y, size, rl.BLACK);
+    //            x += size + gap;
     //        }
     //    }
 
@@ -181,10 +186,10 @@ const Data = struct {
     //        x = self.x_offset;
     //        for (row, 1..) |sq, j| {
     //            const colour = if (sq == 0) rl.WHITE else rl.BLACK;
-    //            rl.DrawRectangle(x, y, self.size, self.size, colour);
-    //            x += self.size + if (j % 5 == 0) 2 * self.gap else self.gap;
+    //            rl.DrawRectangle(x, y, size, size, colour);
+    //            x += size + if (j % 5 == 0) 2 * gap else gap;
     //        }
-    //        y += self.size + if (i % 5 == 0) 2 * self.gap else self.gap;
+    //        y += size + if (i % 5 == 0) 2 * gap else gap;
     //    }
     //}
 
@@ -194,68 +199,55 @@ const Data = struct {
         return self.buffer[0..slice.len :0];
     }
 
-    fn draw_grid_lines(self: Data) void {
-        const x_min = self.x_offset * (self.size + self.gap) + self.gap;
-        const y_min = self.y_offset * (self.size + self.gap) + self.gap;
+    fn draw_grid_lines(self: Data, size: c_int, gap: c_int) void {
+        const x_min = self.x_offset * (size + gap) + gap;
+        const y_min = self.y_offset * (size + gap) + gap;
 
         const rows = @as(c_int, @intCast(self.row_info.len));
         const cols = @as(c_int, @intCast(self.col_info.len));
 
-        //const x_max =
-        //    (self.x_offset + cols) * (self.size + self.gap) +
-        //    @divFloor(cols, 5) * self.gap + self.gap;
-        //const y_max =
-        //    (self.y_offset + rows) * (self.size + self.gap) +
-        //    @divFloor(rows, 5) * self.gap + self.gap;
+        const x_max = x_min + gap + cols * (size + gap) + (@divFloor(cols, 5) + 1) * gap;
+        const y_max = y_min + gap + rows * (size + gap) + (@divFloor(rows, 5) + 1) * gap;
 
-        const x_max =
-            x_min +
-            cols * (self.size + self.gap) +
-            (@divFloor(cols, 5) + 1) * self.gap;
-        const y_max =
-            y_min +
-            rows * (self.size + self.gap) +
-            (@divFloor(rows, 5) + 1) * self.gap;
-
-        var x: c_int = self.gap;
-        var y: c_int = self.gap;
+        var x: c_int = gap;
+        var y: c_int = gap;
 
         // Draw horizontal lines for column numbers
         for (0..@as(usize, @intCast(self.y_offset))) |_| {
-            for (0..@as(usize, @intCast(self.gap))) |_| {
+            for (0..@as(usize, @intCast(gap))) |_| {
                 rl.DrawLine(x_min, y, x_max, y, rl.BLACK);
                 y += 1;
             }
-            y += self.size;
+            y += size;
         }
 
         // Draw horizontal lines for puzzle space
         for (0..self.row_info.len + 1) |i| {
-            const thickness = if (i % 5 == 0) 2 * self.gap else self.gap;
+            const thickness = if (i % 5 == 0) 2 * gap else gap;
             for (0..@as(usize, @intCast(thickness))) |_| {
-                rl.DrawLine(self.gap, y, x_max, y, rl.BLACK);
+                rl.DrawLine(gap, y, x_max, y, rl.BLACK);
                 y += 1;
             }
-            y += self.size;
+            y += size;
         }
 
         // Draw vertical lines for row numbers
         for (0..@as(usize, @intCast(self.x_offset))) |_| {
-            for (0..@as(usize, @intCast(self.gap))) |_| {
+            for (0..@as(usize, @intCast(gap))) |_| {
                 rl.DrawLine(x, y_min, x, y_max, rl.BLACK);
                 x += 1;
             }
-            x += self.size;
+            x += size;
         }
 
         // Draw vertical lines for puzzle space
         for (0..self.col_info.len + 1) |i| {
-            const thickness = if (i % 5 == 0) 2 * self.gap else self.gap;
+            const thickness = if (i % 5 == 0) 2 * gap else gap;
             for (0..@as(usize, @intCast(thickness))) |_| {
-                rl.DrawLine(x, self.gap, x, y_max, rl.BLACK);
+                rl.DrawLine(x, gap, x, y_max, rl.BLACK);
                 x += 1;
             }
-            x += self.size;
+            x += size;
         }
     }
 };
