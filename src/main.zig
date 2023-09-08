@@ -43,13 +43,8 @@ pub fn main() !void {
             const y = @divFloor(win_h, 2) - @divFloor(size, 2);
             rl.DrawText(text, x, y, size, rl.GRAY);
         } else {
-            const x = @as(c_int, @intCast(data.x_nums + data.col_info.len));
-            const y = @as(c_int, @intCast(data.y_nums + data.row_info.len));
-            var size_x: c_int = @divFloor(@divFloor(9 * win_w, 10), x);
-            var size_y: c_int = @divFloor(@divFloor(9 * win_h, 10), y);
-            const size = @min(size_x, size_y);
-            const gap = @divFloor(size, 15);
-            data.draw_grid_lines(size, gap);
+            const drawer = Drawer.init(data, win_w, win_h);
+            drawer.draw_grid_lines();
         }
 
         rl.EndDrawing();
@@ -193,38 +188,74 @@ const Data = struct {
         self.buffer[slice.len] = 0;
         return self.buffer[0..slice.len :0];
     }
+};
 
-    fn draw_grid_lines(self: Data, size: c_int, gap: c_int) void {
-        const x0 = gap;
-        const y0 = gap;
-        const x_len = @as(c_int, @intCast(self.x_nums + self.col_info.len)) *
-            (size + gap) +
-            @as(c_int, @intCast((self.col_info.len / 5) + 2)) * gap;
-        const y_len = @as(c_int, @intCast(self.y_nums + self.row_info.len)) *
-            (size + gap) +
-            @as(c_int, @intCast((self.row_info.len / 5) + 2)) * gap;
+const Drawer = struct {
+    x_nums: usize,
+    y_nums: usize,
+    num_rows: usize,
+    num_cols: usize,
+    x0: c_int,
+    y0: c_int,
+    x_len: c_int,
+    y_len: c_int,
+    size: c_int,
+    gap: c_int,
 
+    fn init(data: Data, win_w: c_int, win_h: c_int) Drawer {
+        const x_nums = data.x_nums;
+        const y_nums = data.y_nums;
+        const num_rows = data.row_info.len;
+        const num_cols = data.col_info.len;
+        const x = @as(c_int, @intCast(x_nums + num_cols));
+        const y = @as(c_int, @intCast(y_nums + num_rows));
+        var size_x: c_int = @divFloor(@divFloor(9 * win_w, 10), x);
+        var size_y: c_int = @divFloor(@divFloor(9 * win_h, 10), y);
+        const size = @min(size_x, size_y);
+        const gap = @divFloor(size, 15);
+        const x_len = x * (size + gap) +
+            @as(c_int, @intCast((num_cols / 5) + 2)) * gap;
+        const y_len = y * (size + gap) +
+            @as(c_int, @intCast((num_rows / 5) + 2)) * gap;
+        const x0 = @divFloor(win_w - x_len, 2);
+        const y0 = @divFloor(win_h - y_len, 2);
+
+        return Drawer{
+            .x_nums = x_nums,
+            .y_nums = y_nums,
+            .num_rows = num_rows,
+            .num_cols = num_cols,
+            .x0 = x0,
+            .y0 = y0,
+            .x_len = x_len,
+            .y_len = y_len,
+            .size = size,
+            .gap = gap,
+        };
+    }
+
+    fn draw_grid_lines(self: Drawer) void {
         // Draw horizontal lines
-        var y: c_int = y0;
-        for (0..self.y_nums + self.row_info.len + 1) |i| {
-            var thick: c_int = gap;
+        var y: c_int = self.y0;
+        for (0..self.y_nums + self.num_rows + 1) |i| {
+            var thick: c_int = self.gap;
             if (i >= self.y_nums and (i - self.y_nums) % 5 == 0) thick *= 2;
-            rl.DrawRectangle(x0, y, x_len, thick, rl.BLACK);
-            y += thick + size;
+            rl.DrawRectangle(self.x0, y, self.x_len, thick, rl.BLACK);
+            y += thick + self.size;
         }
 
         // Draw vertical lines
-        var x: c_int = x0;
-        for (0..self.x_nums + self.col_info.len + 1) |i| {
-            var thick: c_int = gap;
+        var x: c_int = self.x0;
+        for (0..self.x_nums + self.num_cols + 1) |i| {
+            var thick: c_int = self.gap;
             if (i >= self.x_nums and (i - self.x_nums) % 5 == 0) thick *= 2;
-            rl.DrawRectangle(x, y0, thick, y_len, rl.BLACK);
-            x += thick + size;
+            rl.DrawRectangle(x, self.y0, thick, self.y_len, rl.BLACK);
+            x += thick + self.size;
         }
 
         // Blank out the upper-left corner
-        const w = @as(c_int, @intCast(self.x_nums)) * (size + gap);
-        const h = @as(c_int, @intCast(self.y_nums)) * (size + gap);
-        rl.DrawRectangle(x0, y0, w, h, rl.WHITE);
+        const w = @as(c_int, @intCast(self.x_nums)) * (self.size + self.gap);
+        const h = @as(c_int, @intCast(self.y_nums)) * (self.size + self.gap);
+        rl.DrawRectangle(self.x0, self.y0, w, h, rl.WHITE);
     }
 };
