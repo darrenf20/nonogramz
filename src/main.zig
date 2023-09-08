@@ -199,10 +199,10 @@ const Data = struct {
         const y0 = gap;
         const x_len = @as(c_int, @intCast(self.x_nums + self.col_info.len)) *
             (size + gap) +
-            @as(c_int, @intCast((self.col_info.len % 5) + 1)) * gap;
+            @as(c_int, @intCast((self.col_info.len / 5) + 2)) * gap;
         const y_len = @as(c_int, @intCast(self.y_nums + self.row_info.len)) *
             (size + gap) +
-            @as(c_int, @intCast((self.row_info.len % 5) + 1)) * gap;
+            @as(c_int, @intCast((self.row_info.len / 5) + 2)) * gap;
 
         // Draw horizontal lines
         var y: c_int = y0;
