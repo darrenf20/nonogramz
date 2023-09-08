@@ -43,16 +43,11 @@ pub fn main() !void {
             const y = @divFloor(win_h, 2) - @divFloor(size, 2);
             rl.DrawText(text, x, y, size, rl.GRAY);
         } else {
-            const x = data.x_offset + @as(c_int, @intCast(data.col_info.len));
-            const y = data.y_offset + @as(c_int, @intCast(data.row_info.len));
-            //const window_scale =
-            //    @as(f64, @floatFromInt(win_w)) / @as(f64, @floatFromInt(win_h));
-            //const grid_scale =
-            //    @as(f64, @floatFromInt(x)) / @as(f64, @floatFromInt(y));
+            const x = @as(c_int, @intCast(data.x_nums + data.col_info.len));
+            const y = @as(c_int, @intCast(data.y_nums + data.row_info.len));
             var size_x: c_int = @divFloor(@divFloor(9 * win_w, 10), x);
             var size_y: c_int = @divFloor(@divFloor(9 * win_h, 10), y);
-            var size = @min(size_x, size_y);
-
+            const size = @min(size_x, size_y);
             const gap = @divFloor(size, 15);
             data.draw_grid_lines(size, gap);
         }
@@ -71,8 +66,8 @@ const Data = struct {
     col_info: [][]usize = undefined,
     grid: [][]u1 = undefined,
 
-    x_offset: c_int = 0,
-    y_offset: c_int = 0,
+    x_nums: usize = 0, // max number of blocks for a row
+    y_nums: usize = 0, // max number of blocks for a column
 
     fn init(self: *Data) !void {
         self.deinit();
@@ -111,12 +106,12 @@ const Data = struct {
             var len = std.mem.count(u8, str, " ") + 1;
             line.* = try self.ally.alloc(usize, len);
 
-            var offset: c_int = 0;
+            var offset: usize = 0;
             for (line.*) |*sq| {
                 sq.* = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
                 offset += 1;
             }
-            if (offset > self.y_offset) self.y_offset = offset;
+            if (offset > self.y_nums) self.y_nums = offset;
         }
 
         _ = iterator.next().?; // skip blank line
@@ -127,12 +122,12 @@ const Data = struct {
             var len = std.mem.count(u8, str, " ") + 1;
             line.* = try self.ally.alloc(usize, len);
 
-            var offset: c_int = 0;
+            var offset: usize = 0;
             for (line.*) |*sq| {
                 sq.* = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
                 offset += 1;
             }
-            if (offset > self.x_offset) self.x_offset = offset;
+            if (offset > self.x_nums) self.x_nums = offset;
         }
     }
 
@@ -150,8 +145,8 @@ const Data = struct {
         for (self.grid) |line| self.ally.free(line);
         self.ally.free(self.grid);
 
-        self.x_offset = 0;
-        self.y_offset = 0;
+        self.x_nums = 0;
+        self.y_nums = 0;
     }
 
     //fn draw(self: *Data) !void {
@@ -200,54 +195,36 @@ const Data = struct {
     }
 
     fn draw_grid_lines(self: Data, size: c_int, gap: c_int) void {
-        const x_min = self.x_offset * (size + gap) + gap;
-        const y_min = self.y_offset * (size + gap) + gap;
+        const x0 = gap;
+        const y0 = gap;
+        const x_len = @as(c_int, @intCast(self.x_nums + self.col_info.len)) *
+            (size + gap) +
+            @as(c_int, @intCast((self.col_info.len % 5) + 1)) * gap;
+        const y_len = @as(c_int, @intCast(self.y_nums + self.row_info.len)) *
+            (size + gap) +
+            @as(c_int, @intCast((self.row_info.len % 5) + 1)) * gap;
 
-        const rows = @as(c_int, @intCast(self.row_info.len));
-        const cols = @as(c_int, @intCast(self.col_info.len));
-
-        const x_max = x_min + gap + cols * (size + gap) + (@divFloor(cols, 5) + 1) * gap;
-        const y_max = y_min + gap + rows * (size + gap) + (@divFloor(rows, 5) + 1) * gap;
-
-        var x: c_int = gap;
-        var y: c_int = gap;
-
-        // Draw horizontal lines for column numbers
-        for (0..@as(usize, @intCast(self.y_offset))) |_| {
-            for (0..@as(usize, @intCast(gap))) |_| {
-                rl.DrawLine(x_min, y, x_max, y, rl.BLACK);
-                y += 1;
-            }
-            y += size;
+        // Draw horizontal lines
+        var y: c_int = y0;
+        for (0..self.y_nums + self.row_info.len + 1) |i| {
+            var thick: c_int = gap;
+            if (i >= self.y_nums and (i - self.y_nums) % 5 == 0) thick *= 2;
+            rl.DrawRectangle(x0, y, x_len, thick, rl.BLACK);
+            y += thick + size;
         }
 
-        // Draw horizontal lines for puzzle space
-        for (0..self.row_info.len + 1) |i| {
-            const thickness = if (i % 5 == 0) 2 * gap else gap;
-            for (0..@as(usize, @intCast(thickness))) |_| {
-                rl.DrawLine(gap, y, x_max, y, rl.BLACK);
-                y += 1;
-            }
-            y += size;
+        // Draw vertical lines
+        var x: c_int = x0;
+        for (0..self.x_nums + self.col_info.len + 1) |i| {
+            var thick: c_int = gap;
+            if (i >= self.x_nums and (i - self.x_nums) % 5 == 0) thick *= 2;
+            rl.DrawRectangle(x, y0, thick, y_len, rl.BLACK);
+            x += thick + size;
         }
 
-        // Draw vertical lines for row numbers
-        for (0..@as(usize, @intCast(self.x_offset))) |_| {
-            for (0..@as(usize, @intCast(gap))) |_| {
-                rl.DrawLine(x, y_min, x, y_max, rl.BLACK);
-                x += 1;
-            }
-            x += size;
-        }
-
-        // Draw vertical lines for puzzle space
-        for (0..self.col_info.len + 1) |i| {
-            const thickness = if (i % 5 == 0) 2 * gap else gap;
-            for (0..@as(usize, @intCast(thickness))) |_| {
-                rl.DrawLine(x, gap, x, y_max, rl.BLACK);
-                x += 1;
-            }
-            x += size;
-        }
+        // Blank out the upper-left corner
+        const w = @as(c_int, @intCast(self.x_nums)) * (size + gap);
+        const h = @as(c_int, @intCast(self.y_nums)) * (size + gap);
+        rl.DrawRectangle(x0, y0, w, h, rl.WHITE);
     }
 };
