@@ -44,7 +44,7 @@ pub fn main() !void {
             rl.DrawText(text, x, y, size, rl.GRAY);
         } else {
             const drawer = Drawer.init(data, win_w, win_h);
-            drawer.draw_grid_lines();
+            drawer.draw();
         }
 
         rl.EndDrawing();
@@ -234,6 +234,25 @@ const Drawer = struct {
         };
     }
 
+    fn draw(self: Drawer) void {
+        self.shade_number_sections();
+        self.draw_grid_lines();
+    }
+
+    fn shade_number_sections(self: Drawer) void {
+        // Shade the sections grey
+        const num_w =
+            @as(c_int, @intCast(self.x_nums)) * (self.size + self.gap);
+        const num_h =
+            @as(c_int, @intCast(self.y_nums)) * (self.size + self.gap);
+        rl.DrawRectangle(self.x0, self.y0, self.x_len, num_h, rl.GRAY);
+        rl.DrawRectangle(self.x0, self.y0, num_w, self.y_len, rl.GRAY);
+
+        // Highlight the row and column for the square currently hovered over
+        const pos = self.grid_from_screen(rl.GetMouseX(), rl.GetMouseY());
+        std.debug.print("{any}\n", .{pos});
+    }
+
     fn draw_grid_lines(self: Drawer) void {
         // Draw horizontal lines
         var y: c_int = self.y0;
@@ -257,5 +276,28 @@ const Drawer = struct {
         const w = @as(c_int, @intCast(self.x_nums)) * (self.size + self.gap);
         const h = @as(c_int, @intCast(self.y_nums)) * (self.size + self.gap);
         rl.DrawRectangle(self.x0, self.y0, w, h, rl.WHITE);
+    }
+
+    fn grid_from_screen(self: Drawer, x: c_int, y: c_int) ?[2]c_int {
+        const sq = self.size + self.gap;
+        const x0 = self.x0 + @as(c_int, @intCast(self.x_nums)) * sq;
+        const y0 = self.y0 + @as(c_int, @intCast(self.y_nums)) * sq;
+        const x1 = self.x0 + self.x_len;
+        const y1 = self.y0 + self.y_len;
+
+        if (x < x0 or x > x1 or y < y0 or y > y1) return null;
+        //const row = @divFloor(y - y0, sq);
+        //const col = @divFloor(x - x0, sq);
+
+        const row = @divFloor(y - y0 - (@divFloor(y, 5 * sq) + 1) * self.gap, sq);
+        const col = @divFloor(x - x0 - (@divFloor(x, 5 * sq) + 1) * self.gap, sq);
+
+        //const r = @mod(y - y0, sq) - self.gap;
+        //if (r <= self.gap or r >= self.size - self.gap) return null;
+        //const c = @mod(x - x0, sq) - self.gap;
+        //if (c <= self.gap or c >= self.size - self.gap) return null;
+        //std.debug.print("{} {}   ", .{ r, c });
+
+        return [2]c_int{ row, col };
     }
 };
