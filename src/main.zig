@@ -43,8 +43,8 @@ pub fn main() !void {
             const y = @divFloor(win_h, 2) - @divFloor(size, 2);
             rl.DrawText(text, x, y, size, rl.GRAY);
         } else {
-            const drawer = Drawer.init(data, win_w, win_h);
-            drawer.draw();
+            const drawer = Drawer.init(&data, win_w, win_h);
+            try drawer.draw();
         }
 
         rl.EndDrawing();
@@ -184,13 +184,14 @@ const Data = struct {
     //}
 
     fn bufZ(self: *Data, num: usize) ![:0]u8 {
-        const slice = try std.fmt.bufPrint(self.buffer, "{}", .{num});
+        const slice = try std.fmt.bufPrint(&self.buffer, "{}", .{num});
         self.buffer[slice.len] = 0;
         return self.buffer[0..slice.len :0];
     }
 };
 
 const Drawer = struct {
+    data: *Data,
     x_nums: usize,
     y_nums: usize,
     num_rows: usize,
@@ -202,7 +203,7 @@ const Drawer = struct {
     size: c_int,
     gap: c_int,
 
-    fn init(data: Data, win_w: c_int, win_h: c_int) Drawer {
+    fn init(data: *Data, win_w: c_int, win_h: c_int) Drawer {
         const x_nums = data.x_nums;
         const y_nums = data.y_nums;
         const num_rows = data.row_info.len;
@@ -221,6 +222,7 @@ const Drawer = struct {
         const y0 = @divFloor(win_h - y_len, 2);
 
         return Drawer{
+            .data = data,
             .x_nums = x_nums,
             .y_nums = y_nums,
             .num_rows = num_rows,
@@ -234,9 +236,10 @@ const Drawer = struct {
         };
     }
 
-    fn draw(self: Drawer) void {
+    fn draw(self: Drawer) !void {
         self.shade_number_sections();
         self.draw_grid_lines();
+        try self.draw_numbers();
     }
 
     fn shade_number_sections(self: Drawer) void {
@@ -253,11 +256,7 @@ const Drawer = struct {
         // Highlight the row and column for the square currently hovered over
         if (self.grid_from_screen(rl.GetMouseX(), rl.GetMouseY())) |g_pos| {
             const s_pos = self.screen_from_grid(g_pos[0], g_pos[1]);
-
-            // Row line
             rl.DrawRectangle(self.x0, s_pos[1], num_w, sq, rl.LIGHTGRAY);
-
-            // Column line
             rl.DrawRectangle(s_pos[0], self.y0, sq, num_h, rl.LIGHTGRAY);
         }
     }
@@ -285,6 +284,46 @@ const Drawer = struct {
         const w = @as(c_int, @intCast(self.x_nums)) * (self.size + self.gap);
         const h = @as(c_int, @intCast(self.y_nums)) * (self.size + self.gap);
         rl.DrawRectangle(self.x0, self.y0, w, h, rl.WHITE);
+    }
+
+    fn draw_numbers(self: Drawer) !void {
+        const sq = self.size + self.gap;
+
+        for (self.data.row_info, 0..) |line, i_| {
+            const i = @as(c_int, @intCast(i_));
+
+            for (line, 0..) |num, j_| {
+                const j = @as(c_int, @intCast(self.x_nums - line.len + j_));
+                const text = try self.data.bufZ(num);
+                const len = rl.MeasureText(text, self.size - 2 * self.gap);
+
+                const x = self.x0 + j * sq +
+                    @divFloor(self.size, 2) - @divFloor(len, 2);
+                const y = self.y0 + 2 * self.gap +
+                    @as(c_int, @intCast(self.y_nums)) * sq +
+                    (i * sq) + @divFloor(i, 5) * self.gap;
+
+                rl.DrawText(text, x, y, self.size, rl.BLACK);
+            }
+        }
+
+        for (self.data.col_info, 0..) |line, j_| {
+            const j = @as(c_int, @intCast(j_));
+
+            for (line, 0..) |num, i_| {
+                const i = @as(c_int, @intCast(self.y_nums - line.len + i_));
+                const text = try self.data.bufZ(num);
+                const len = rl.MeasureText(text, self.size - 2 * self.gap);
+
+                const x = self.x0 + 2 * self.gap +
+                    @as(c_int, @intCast(self.x_nums)) * sq +
+                    (j * sq) + @divFloor(j, 5) * self.gap +
+                    @divFloor(self.size, 2) - @divFloor(len, 2);
+                const y = self.y0 + i * sq + 2 * self.gap;
+
+                rl.DrawText(text, x, y, self.size, rl.BLACK);
+            }
+        }
     }
 
     fn grid_from_screen(self: Drawer, x: c_int, y: c_int) ?[2]c_int {
