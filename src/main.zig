@@ -280,24 +280,14 @@ const Drawer = struct {
 
     fn grid_from_screen(self: Drawer, x: c_int, y: c_int) ?[2]c_int {
         const sq = self.size + self.gap;
-        const x0 = self.x0 + @as(c_int, @intCast(self.x_nums)) * sq;
-        const y0 = self.y0 + @as(c_int, @intCast(self.y_nums)) * sq;
-        const x1 = self.x0 + self.x_len;
-        const y1 = self.y0 + self.y_len;
+        const x0 = self.x0 + @as(c_int, @intCast(self.x_nums)) * sq + self.gap;
+        const y0 = self.y0 + @as(c_int, @intCast(self.y_nums)) * sq + self.gap;
+        const x1 = self.x0 + self.x_len - self.gap - 1;
+        const y1 = self.y0 + self.y_len - self.gap - 1;
 
         if (x < x0 or x > x1 or y < y0 or y > y1) return null;
-        //const row = @divFloor(y - y0, sq);
-        //const col = @divFloor(x - x0, sq);
-
-        const row = @divFloor(y - y0 - (@divFloor(y, 5 * sq) + 1) * self.gap, sq);
-        const col = @divFloor(x - x0 - (@divFloor(x, 5 * sq) + 1) * self.gap, sq);
-
-        //const r = @mod(y - y0, sq) - self.gap;
-        //if (r <= self.gap or r >= self.size - self.gap) return null;
-        //const c = @mod(x - x0, sq) - self.gap;
-        //if (c <= self.gap or c >= self.size - self.gap) return null;
-        //std.debug.print("{} {}   ", .{ r, c });
-
+        const row = @divFloor(y - y0 - @divFloor(y, 5 * sq) * self.gap, sq);
+        const col = @divFloor(x - x0 - @divFloor(x, 5 * sq) * self.gap, sq);
         return [2]c_int{ row, col };
     }
 };
