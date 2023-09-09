@@ -240,17 +240,26 @@ const Drawer = struct {
     }
 
     fn shade_number_sections(self: Drawer) void {
-        // Shade the sections grey
+        const sq = (self.size + self.gap);
         const num_w =
             @as(c_int, @intCast(self.x_nums)) * (self.size + self.gap);
         const num_h =
             @as(c_int, @intCast(self.y_nums)) * (self.size + self.gap);
+
+        // Shade the sections grey
         rl.DrawRectangle(self.x0, self.y0, self.x_len, num_h, rl.GRAY);
         rl.DrawRectangle(self.x0, self.y0, num_w, self.y_len, rl.GRAY);
 
         // Highlight the row and column for the square currently hovered over
-        const pos = self.grid_from_screen(rl.GetMouseX(), rl.GetMouseY());
-        std.debug.print("{any}\n", .{pos});
+        if (self.grid_from_screen(rl.GetMouseX(), rl.GetMouseY())) |g_pos| {
+            const s_pos = self.screen_from_grid(g_pos[0], g_pos[1]);
+
+            // Row line
+            rl.DrawRectangle(self.x0, s_pos[1], num_w, sq, rl.LIGHTGRAY);
+
+            // Column line
+            rl.DrawRectangle(s_pos[0], self.y0, sq, num_h, rl.LIGHTGRAY);
+        }
     }
 
     fn draw_grid_lines(self: Drawer) void {
@@ -286,8 +295,18 @@ const Drawer = struct {
         const y1 = self.y0 + self.y_len - self.gap - 1;
 
         if (x < x0 or x > x1 or y < y0 or y > y1) return null;
-        const row = @divFloor(y - y0 - @divFloor(y, 5 * sq) * self.gap, sq);
-        const col = @divFloor(x - x0 - @divFloor(x, 5 * sq) * self.gap, sq);
-        return [2]c_int{ row, col };
+        const i = @divFloor(y - y0 - @divFloor(y, 5 * sq) * self.gap, sq);
+        const j = @divFloor(x - x0 - @divFloor(x, 5 * sq) * self.gap, sq);
+        return [2]c_int{ i, j };
+    }
+
+    fn screen_from_grid(self: Drawer, i: c_int, j: c_int) [2]c_int {
+        const sq = self.size + self.gap;
+        const x0 = self.x0 + @as(c_int, @intCast(self.x_nums)) * sq + self.gap;
+        const y0 = self.y0 + @as(c_int, @intCast(self.y_nums)) * sq + self.gap;
+
+        const x = x0 + j * sq + @divFloor(j, 5) * self.gap;
+        const y = y0 + i * sq + @divFloor(i, 5) * self.gap;
+        return [2]c_int{ x, y };
     }
 };
