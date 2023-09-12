@@ -76,6 +76,7 @@ const Data = struct {
         self.bytes = try file.readToEndAlloc(self.ally, try file.getEndPos());
         file.close();
 
+        // Custom file format
         // Populate puzzle info
         // TODO: error checking, validation
         var iterator = std.mem.splitScalar(u8, self.bytes, '\n');
@@ -144,45 +145,6 @@ const Data = struct {
         self.y_nums = 0;
     }
 
-    //fn draw(self: *Data) !void {
-    //    var x: c_int = self.x_offset + 4 * gap;
-    //    var y: c_int = gap;
-
-    //    // Draw column number text
-    //    for (self.col_info) |line| {
-    //        y = gap;
-    //        for (line) |num| {
-    //            const txt = try self.bufZ(num);
-    //            rl.DrawText(txt, x, y, size, rl.BLACK);
-    //            y += size + gap;
-    //        }
-    //        x += size + gap;
-    //    }
-
-    //    // Draw row number text
-    //    x = gap;
-    //    for (self.row_info) |line| {
-    //        y += size + gap;
-    //        for (line) |num| {
-    //            const txt = try self.bufZ(num);
-    //            rl.DrawText(txt, x, y, size, rl.BLACK);
-    //            x += size + gap;
-    //        }
-    //    }
-
-    //    // Draw puzzle grid
-    //    y = self.y_offset;
-    //    for (self.grid, 1..) |row, i| {
-    //        x = self.x_offset;
-    //        for (row, 1..) |sq, j| {
-    //            const colour = if (sq == 0) rl.WHITE else rl.BLACK;
-    //            rl.DrawRectangle(x, y, size, size, colour);
-    //            x += size + if (j % 5 == 0) 2 * gap else gap;
-    //        }
-    //        y += size + if (i % 5 == 0) 2 * gap else gap;
-    //    }
-    //}
-
     fn bufZ(self: *Data, num: usize) ![:0]u8 {
         const slice = try std.fmt.bufPrint(&self.buffer, "{}", .{num});
         self.buffer[slice.len] = 0;
@@ -212,8 +174,8 @@ const Drawer = struct {
         const y = @as(c_int, @intCast(y_nums + num_rows));
         var size_x: c_int = @divFloor(@divFloor(9 * win_w, 10), x);
         var size_y: c_int = @divFloor(@divFloor(9 * win_h, 10), y);
-        const size = @min(size_x, size_y);
-        const gap = @divFloor(size, 15);
+        const size = @max(4, @min(size_x, size_y));
+        const gap = @max(1, @divFloor(size, 15));
         const x_len = x * (size + gap) +
             @as(c_int, @intCast((num_cols / 5) + 2)) * gap;
         const y_len = y * (size + gap) +
