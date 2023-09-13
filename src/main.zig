@@ -370,6 +370,8 @@ const Drawer = struct {
         if (x < x0 or x > x1 or y < y0 or y > y1) return null;
         const i = @divFloor(y - y0 - @divFloor(y, 5 * sq) * self.gap, sq);
         const j = @divFloor(x - x0 - @divFloor(x, 5 * sq) * self.gap, sq);
+        if (i < 0 or j < 0) return null;
+
         return [2]usize{ @as(usize, @intCast(i)), @as(usize, @intCast(j)) };
     }
 
