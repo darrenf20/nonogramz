@@ -61,11 +61,13 @@ const Data = struct {
 
     row_info: [][]usize = undefined,
     col_info: [][]usize = undefined,
-    grid: [][]u1 = undefined,
+    grid: [][]State = undefined,
     is_solved: bool = false,
 
     x_nums: usize = 0, // max number of blocks for a row
     y_nums: usize = 0, // max number of blocks for a column
+
+    const State = enum { blank, cross, square };
 
     fn init(self: *Data) !void {
         self.deinit();
@@ -91,10 +93,10 @@ const Data = struct {
         self.col_info = try self.ally.alloc([]usize, col_len);
 
         // Zero-initialise grid
-        self.grid = try self.ally.alloc([]u1, row_len);
+        self.grid = try self.ally.alloc([]State, row_len);
         for (self.grid) |*row| {
-            row.* = try self.ally.alloc(u1, col_len);
-            for (row.*) |*square| square.* = 0;
+            row.* = try self.ally.alloc(State, col_len);
+            for (row.*) |*square| square.* = .blank;
         }
 
         _ = iterator.next().?; // skip blank line
@@ -159,7 +161,7 @@ const Data = struct {
             var clue_total: usize = 0;
             for (clues) |n| clue_total += n;
             var line_total: usize = 0;
-            for (line) |n| line_total += n;
+            for (line) |n| line_total += @intFromEnum(n) / 2;
             if (clue_total != line_total) {
                 self.is_solved = false;
                 return;
@@ -170,7 +172,9 @@ const Data = struct {
             var clue_total: usize = 0;
             for (clues) |n| clue_total += n;
             var line_total: usize = 0;
-            for (0..self.grid.len) |i| line_total += self.grid[i][j];
+            for (0..self.grid.len) |i| {
+                line_total += @intFromEnum(self.grid[i][j]) / 2;
+            }
             if (clue_total != line_total) {
                 self.is_solved = false;
                 return;
@@ -327,8 +331,31 @@ const Drawer = struct {
                 const pos = self.screen_from_grid(i, j);
                 const x = pos[0] + self.gap;
                 const y = pos[1] + self.gap;
-                const colour = if (sq == 0) rl.WHITE else fill;
-                rl.DrawRectangle(x, y, len, len, colour);
+
+                if (sq == .cross) {
+                    var a: rl.Vector2 = .{
+                        .x = @floatFromInt(x + self.gap),
+                        .y = @floatFromInt(y + self.gap),
+                    };
+                    var b: rl.Vector2 = .{
+                        .x = @floatFromInt(x + len - self.gap),
+                        .y = @floatFromInt(y + len - self.gap),
+                    };
+                    rl.DrawLineEx(a, b, @floatFromInt(self.gap), rl.GRAY);
+
+                    a = .{
+                        .x = @floatFromInt(x + self.gap),
+                        .y = @floatFromInt(y + len - self.gap),
+                    };
+                    b = .{
+                        .x = @floatFromInt(x + len - self.gap),
+                        .y = @floatFromInt(y + self.gap),
+                    };
+                    rl.DrawLineEx(a, b, @floatFromInt(self.gap), rl.GRAY);
+                } else {
+                    const colour = if (sq == .blank) rl.WHITE else fill;
+                    rl.DrawRectangle(x, y, len, len, colour);
+                }
             }
         }
     }
@@ -360,12 +387,20 @@ const Drawer = struct {
     }
 
     fn update_grid(self: Drawer) void {
+        const mouse_x = rl.GetMouseX();
+        const mouse_y = rl.GetMouseY();
+
         if (rl.IsMouseButtonPressed(rl.MOUSE_BUTTON_LEFT)) {
-            const mouse_x = rl.GetMouseX();
-            const mouse_y = rl.GetMouseY();
             if (self.grid_from_screen(mouse_x, mouse_y)) |pos| {
-                const val = self.data.grid[pos[0]][pos[1]];
-                self.data.grid[pos[0]][pos[1]] = 1 - val;
+                const sq = &self.data.grid[pos[0]][pos[1]];
+                sq.* = if (sq.* == .square) .blank else .square;
+            }
+        }
+
+        if (rl.IsMouseButtonPressed(rl.MOUSE_BUTTON_RIGHT)) {
+            if (self.grid_from_screen(mouse_x, mouse_y)) |pos| {
+                const sq = &self.data.grid[pos[0]][pos[1]];
+                sq.* = if (sq.* == .cross) .blank else .cross;
             }
         }
     }
