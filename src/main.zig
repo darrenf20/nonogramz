@@ -43,7 +43,9 @@ pub fn main() !void {
             const y = @divFloor(win_h, 2) - @divFloor(size, 2);
             rl.DrawText(text, x, y, size, rl.GRAY);
         } else {
+            data.evaluate_grid();
             const drawer = Drawer.init(&data, win_w, win_h);
+            drawer.update_grid();
             try drawer.draw();
         }
 
@@ -60,6 +62,7 @@ const Data = struct {
     row_info: [][]usize = undefined,
     col_info: [][]usize = undefined,
     grid: [][]u1 = undefined,
+    is_solved: bool = false,
 
     x_nums: usize = 0, // max number of blocks for a row
     y_nums: usize = 0, // max number of blocks for a column
@@ -150,6 +153,32 @@ const Data = struct {
         self.buffer[slice.len] = 0;
         return self.buffer[0..slice.len :0];
     }
+
+    fn evaluate_grid(self: *Data) void {
+        for (self.row_info, self.grid) |clues, line| {
+            var clue_total: usize = 0;
+            for (clues) |n| clue_total += n;
+            var line_total: usize = 0;
+            for (line) |n| line_total += n;
+            if (clue_total != line_total) {
+                self.is_solved = false;
+                return;
+            }
+        }
+
+        for (self.col_info, 0..) |clues, j| {
+            var clue_total: usize = 0;
+            for (clues) |n| clue_total += n;
+            var line_total: usize = 0;
+            for (0..self.grid.len) |i| line_total += self.grid[i][j];
+            if (clue_total != line_total) {
+                self.is_solved = false;
+                return;
+            }
+        }
+
+        self.is_solved = true;
+    }
 };
 
 const Drawer = struct {
@@ -174,7 +203,7 @@ const Drawer = struct {
         const y = @as(c_int, @intCast(y_nums + num_rows));
         var size_x: c_int = @divFloor(@divFloor(9 * win_w, 10), x);
         var size_y: c_int = @divFloor(@divFloor(9 * win_h, 10), y);
-        const size = @max(4, @min(size_x, size_y));
+        const size = @max(1, @min(size_x, size_y));
         const gap = @max(1, @divFloor(size, 15));
         const x_len = x * (size + gap) +
             @as(c_int, @intCast((num_cols / 5) + 2)) * gap;
@@ -201,7 +230,8 @@ const Drawer = struct {
     fn draw(self: Drawer) !void {
         self.shade_number_sections();
         self.draw_grid_lines();
-        try self.draw_numbers();
+        try self.draw_numbers(); // get rid of error check?
+        self.draw_squares();
     }
 
     fn shade_number_sections(self: Drawer) void {
@@ -288,7 +318,22 @@ const Drawer = struct {
         }
     }
 
-    fn grid_from_screen(self: Drawer, x: c_int, y: c_int) ?[2]c_int {
+    fn draw_squares(self: Drawer) void {
+        const fill = if (self.data.is_solved) rl.VIOLET else rl.BLACK;
+        const len = self.size;
+
+        for (self.data.grid, 0..) |row, i| {
+            for (row, 0..) |sq, j| {
+                const pos = self.screen_from_grid(i, j);
+                const x = pos[0] + self.gap;
+                const y = pos[1] + self.gap;
+                const colour = if (sq == 0) rl.WHITE else fill;
+                rl.DrawRectangle(x, y, len, len, colour);
+            }
+        }
+    }
+
+    fn grid_from_screen(self: Drawer, x: c_int, y: c_int) ?[2]usize {
         const sq = self.size + self.gap;
         const x0 = self.x0 + @as(c_int, @intCast(self.x_nums)) * sq + self.gap;
         const y0 = self.y0 + @as(c_int, @intCast(self.y_nums)) * sq + self.gap;
@@ -298,16 +343,30 @@ const Drawer = struct {
         if (x < x0 or x > x1 or y < y0 or y > y1) return null;
         const i = @divFloor(y - y0 - @divFloor(y, 5 * sq) * self.gap, sq);
         const j = @divFloor(x - x0 - @divFloor(x, 5 * sq) * self.gap, sq);
-        return [2]c_int{ i, j };
+        return [2]usize{ @as(usize, @intCast(i)), @as(usize, @intCast(j)) };
     }
 
-    fn screen_from_grid(self: Drawer, i: c_int, j: c_int) [2]c_int {
+    fn screen_from_grid(self: Drawer, i: usize, j: usize) [2]c_int {
         const sq = self.size + self.gap;
         const x0 = self.x0 + @as(c_int, @intCast(self.x_nums)) * sq + self.gap;
         const y0 = self.y0 + @as(c_int, @intCast(self.y_nums)) * sq + self.gap;
 
-        const x = x0 + j * sq + @divFloor(j, 5) * self.gap;
-        const y = y0 + i * sq + @divFloor(i, 5) * self.gap;
+        const ci = @as(c_int, @intCast(i));
+        const cj = @as(c_int, @intCast(j));
+
+        const x = x0 + cj * sq + @divFloor(cj, 5) * self.gap;
+        const y = y0 + ci * sq + @divFloor(ci, 5) * self.gap;
         return [2]c_int{ x, y };
+    }
+
+    fn update_grid(self: Drawer) void {
+        if (rl.IsMouseButtonPressed(rl.MOUSE_BUTTON_LEFT)) {
+            const mouse_x = rl.GetMouseX();
+            const mouse_y = rl.GetMouseY();
+            if (self.grid_from_screen(mouse_x, mouse_y)) |pos| {
+                const val = self.data.grid[pos[0]][pos[1]];
+                self.data.grid[pos[0]][pos[1]] = 1 - val;
+            }
+        }
     }
 };
