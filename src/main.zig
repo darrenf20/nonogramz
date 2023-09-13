@@ -324,32 +324,32 @@ const Drawer = struct {
 
     fn draw_squares(self: Drawer) void {
         const fill = if (self.data.is_solved) rl.VIOLET else rl.BLACK;
-        const len = self.size;
+        const len = self.size - 2 * self.gap;
 
         for (self.data.grid, 0..) |row, i| {
             for (row, 0..) |sq, j| {
                 const pos = self.screen_from_grid(i, j);
-                const x = pos[0] + self.gap;
-                const y = pos[1] + self.gap;
+                const x = pos[0] + 2 * self.gap;
+                const y = pos[1] + 2 * self.gap;
 
                 if (sq == .cross) {
                     var a: rl.Vector2 = .{
-                        .x = @floatFromInt(x + self.gap),
-                        .y = @floatFromInt(y + self.gap),
+                        .x = @floatFromInt(x),
+                        .y = @floatFromInt(y),
                     };
                     var b: rl.Vector2 = .{
-                        .x = @floatFromInt(x + len - self.gap),
-                        .y = @floatFromInt(y + len - self.gap),
+                        .x = @floatFromInt(x + len),
+                        .y = @floatFromInt(y + len),
                     };
                     rl.DrawLineEx(a, b, @floatFromInt(self.gap), rl.GRAY);
 
                     a = .{
-                        .x = @floatFromInt(x + self.gap),
-                        .y = @floatFromInt(y + len - self.gap),
+                        .x = @floatFromInt(x),
+                        .y = @floatFromInt(y + len),
                     };
                     b = .{
-                        .x = @floatFromInt(x + len - self.gap),
-                        .y = @floatFromInt(y + self.gap),
+                        .x = @floatFromInt(x + len),
+                        .y = @floatFromInt(y),
                     };
                     rl.DrawLineEx(a, b, @floatFromInt(self.gap), rl.GRAY);
                 } else {
