@@ -14,6 +14,8 @@ pub fn main() !void {
     var data = Data{ .ally = allocator };
     defer data.deinit();
 
+    var prob_grid: [][]f64 = undefined;
+
     // Window configuration
     rl.SetConfigFlags(rl.FLAG_WINDOW_RESIZABLE);
     rl.InitWindow(800, 800, "NonogramZ");
@@ -26,7 +28,12 @@ pub fn main() !void {
         if (rl.IsKeyPressed(rl.KEY_F)) {
             if (rl.IsWindowMaximized()) rl.RestoreWindow() else rl.MaximizeWindow();
         }
-        if (rl.IsFileDropped()) try data.init();
+
+        if (rl.IsFileDropped()) {
+            if (data.bytes.len != 0) free_prob_grid(allocator, prob_grid);
+            try data.init();
+            prob_grid = try create_prob_grid(data);
+        }
 
         // Draw
         rl.BeginDrawing();
@@ -51,6 +58,8 @@ pub fn main() !void {
 
         rl.EndDrawing();
     }
+
+    if (data.bytes.len != 0) free_prob_grid(allocator, prob_grid);
 }
 
 const Data = struct {
@@ -416,4 +425,31 @@ fn nCr(n: usize, r: usize) usize {
         result /= i;
     }
     return result;
+}
+
+fn create_prob_grid(data: Data) ![][]f64 {
+    var grid = try data.ally.alloc([]f64, data.row_info.len);
+    for (grid, 0..) |*line, i| {
+        line.* = try data.ally.alloc(f64, data.col_info.len);
+
+        const n = data.col_info.len;
+        var m: usize = 0;
+        for (data.row_info[i]) |s| m += s;
+        const k = data.row_info[i].len;
+        const c = nCr(n - m + 1, k);
+
+        for (line.*) |*sq| {
+            if (data.row_info[i][0] == 0) {
+                sq.* = 0.0;
+            } else {
+                sq.* = 1.0 / @as(f64, @floatFromInt(c));
+            }
+        }
+    }
+    return grid;
+}
+
+fn free_prob_grid(allocator: std.mem.Allocator, grid: [][]f64) void {
+    for (grid) |line| allocator.free(line);
+    allocator.free(grid);
 }
