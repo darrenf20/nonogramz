@@ -54,9 +54,7 @@ pub fn main() !void {
 }
 
 const std = @import("std");
+const rl = @cImport(@cInclude("raylib.h"));
 const puzzle = @import("puzzle");
 const gui = @import("gui");
 const maths = @import("maths");
-const rl = @cImport({
-    @cInclude("raylib.h");
-});

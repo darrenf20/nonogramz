@@ -1,16 +1,11 @@
 .{
-    .name = "nonogram-zig",
-    .version = "0.1.0",
+    .name = "nonogramz",
+    .version = "0.0.1",
     .dependencies = .{
         .raylib = .{
-            .url = "https://github.com/raysan5/raylib/archive/e52ae870f297961b9ac23d2e6eca4937a24ac6c0.tar.gz",
-            .hash = "1220b9dc848ba1359453ce8a68fa844bcbc2cacda462b47498f12d3fd932c63390ee",
+            .url = "https://github.com/raysan5/raylib/archive/b03c8ba945a06ed1ec3d6ed7c3185e1264909323.tar.gz",
+            .hash = "1220b6b6198344837d51588b1ed3f63cd6b56b2d60da675219f7578018b54f885830",
         },
     },
-    .paths = .{
-        "build.zig",
-        "build.zig.zon",
-        "README.md",
-        "src",
-    },
+    .paths = .{ "build.zig", "build.zig.zon", "src", },
 }

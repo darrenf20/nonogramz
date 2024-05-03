@@ -4,7 +4,7 @@
 This project is built with [Zig](https://ziglang.org) and [raylib](https://www.raylib.com) to explore solutions to [nonograms](https://en.wikipedia.org/wiki/Nonogram). Nonograms are NP-complete problems. I aim to analyse and compare different algorithms with the hope to discover novel techniques with which to solve these puzzles.
 
 ### Installation
-- Dependencies: [Zig](https://ziglang.org/download/), git
+- Make sure to install [Zig](https://ziglang.org/download/) and the [dependencies for raylib](https://github.com/raysan5/raylib/wiki/Working-on-GNU-Linux)
 - Clone this repo into your desired directory
 - Type `zig build run`
 

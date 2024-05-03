@@ -15,7 +15,7 @@ pub const Data = struct {
     pub fn init(self: *Data) !void {
         self.deinit();
 
-        var dropped: rl.FilePathList = rl.LoadDroppedFiles();
+        const dropped: rl.FilePathList = rl.LoadDroppedFiles();
         const file = try std.fs.openFileAbsoluteZ(
             @as([*:0]u8, @ptrCast(&(dropped.paths.*[0]))), // simplify?
             .{},
@@ -29,8 +29,8 @@ pub const Data = struct {
         // TODO: error checking, validation
         var iterator = std.mem.splitScalar(u8, self.bytes, '\n');
         var num_it = std.mem.splitScalar(u8, iterator.next().?, ' ');
-        var col_len = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
-        var row_len = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
+        const col_len = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
+        const row_len = try std.fmt.parseUnsigned(usize, num_it.next().?, 10);
 
         self.row_info = try self.allocator.alloc([]usize, row_len);
         self.col_info = try self.allocator.alloc([]usize, col_len);
@@ -44,10 +44,10 @@ pub const Data = struct {
 
         _ = iterator.next().?; // skip blank line
         for (self.col_info) |*line| {
-            var str: []const u8 = iterator.next().?;
+            const str: []const u8 = iterator.next().?;
             num_it = std.mem.splitScalar(u8, str, ' ');
 
-            var len = std.mem.count(u8, str, " ") + 1;
+            const len = std.mem.count(u8, str, " ") + 1;
             line.* = try self.allocator.alloc(usize, len);
 
             var offset: usize = 0;
@@ -60,10 +60,10 @@ pub const Data = struct {
 
         _ = iterator.next().?; // skip blank line
         for (self.row_info) |*line| {
-            var str: []const u8 = iterator.next().?;
+            const str: []const u8 = iterator.next().?;
             num_it = std.mem.splitScalar(u8, str, ' ');
 
-            var len = std.mem.count(u8, str, " ") + 1;
+            const len = std.mem.count(u8, str, " ") + 1;
             line.* = try self.allocator.alloc(usize, len);
 
             var offset: usize = 0;

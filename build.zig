@@ -5,35 +5,34 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "nonogram-zig",
+        .name = "nonogramz",
         .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
 
-    const puzzle = b.addModule("puzzle", .{ .source_file = .{ .path = "src/puzzle.zig" } });
-    exe.addModule("puzzle", puzzle);
+    // Prepare all of NonogramZ's modules
+    const puzzle = b.addModule("puzzle", .{ .root_source_file = .{ .path = "src/puzzle.zig" } });
+    exe.root_module.addImport("puzzle", puzzle);
 
-    const gui = b.addModule("gui", .{ .source_file = .{ .path = "src/gui.zig" }, .dependencies = &.{.{ .name = "puzzle", .module = puzzle }} });
-    exe.addModule("gui", gui);
+    const gui = b.addModule("gui", .{ .root_source_file = .{ .path = "src/gui.zig" }, .imports = &.{.{ .name = "puzzle", .module = puzzle }} });
+    exe.root_module.addImport("gui", gui);
 
-    const maths = b.addModule("maths", .{ .source_file = .{ .path = "src/maths.zig" } });
-    exe.addModule("maths", maths);
+    const maths = b.addModule("maths", .{ .root_source_file = .{ .path = "src/maths.zig" } });
+    exe.root_module.addImport("maths", maths);
 
-    const prob = b.addModule("prob", .{ .source_file = .{ .path = "src/prob.zig" } });
-    exe.addModule("prob", prob);
+    const prob = b.addModule("prob", .{ .root_source_file = .{ .path = "src/prob.zig" } });
+    exe.root_module.addImport("prob", prob);
 
-    exe.linkLibC();
-    exe.linkSystemLibrary("raylib");
+    // Prepare the inclusion of raylib
+    const raylib_dep = b.dependency("raylib", .{ .target = target, .optimize = optimize });
+    exe.linkLibrary(raylib_dep.artifact("raylib"));
 
     b.installArtifact(exe);
-
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
 
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
+    if (b.args) |args| run_cmd.addArgs(args);
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
