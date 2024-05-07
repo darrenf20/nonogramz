@@ -1,6 +1,8 @@
 # NonogramZ
 ### Reactive GUI for exploring and analysing nonogram solver algorithms
 
+[Screencast_20240507_224106.webm](https://github.com/darrenf20/nonogramz/assets/62854515/f565a44a-99a7-4521-93ec-d39e3aadf2e9)
+
 This project is built with [Zig](https://ziglang.org) and [raylib](https://www.raylib.com) to explore solutions to [nonograms](https://en.wikipedia.org/wiki/Nonogram). Nonograms are NP-complete problems. I aim to analyse and compare different algorithms with the hope to discover novel techniques with which to solve these puzzles.
 
 ### Installation
@@ -21,3 +23,4 @@ Some example files are provided in `puzzles/`. Drag and drop these onto the wind
 - Cosmetic options: light and dark themes, different colours and fonts
 - On-screen help information
 - Implement puzzle-solving algorithms and display performance analytics
+
